@@ -40,6 +40,9 @@ impl PrintProgramError for TokenVestingError {
             TokenVestingError::DataTypeMismatch => msg!("Error: Data type mismatch"),
             TokenVestingError::WrongOwner => msg!("Error: Wrong account owner"),
             TokenVestingError::Uninitialized => msg!("Error: Account is uninitialized"),
+            TokenVestingError::InvalidVaultAccount => {
+                msg!("Error: The provided vault account is invalid")
+            }
         }
     }
 }

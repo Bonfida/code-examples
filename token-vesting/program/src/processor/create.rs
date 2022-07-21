@@ -1,29 +1,34 @@
-//! Example instruction //TODO
+//! Create a new token vesting contract
 
 use bonfida_utils::{checks::check_account_owner, WrappedPod};
-use solana_program::{msg, program::invoke};
+use solana_program::{msg, program::invoke, program_pack::Pack};
+use spl_token::state::AccountState;
 
-use crate::state::{vesting_contract::{VestingContract, VestingSchedule, VestingContractHeader}, Tag, self};
+use crate::{
+    error::TokenVestingError,
+    state::{
+        self,
+        vesting_contract::{VestingContract, VestingContractHeader, VestingSchedule},
+    },
+};
 
 use {
     bonfida_utils::{
         checks::{check_account_key, check_signer},
-        BorshSize, InstructionsAccount,
+        InstructionsAccount,
     },
-    borsh::{BorshDeserialize, BorshSerialize},
     solana_program::{
         account_info::{next_account_info, AccountInfo},
         entrypoint::ProgramResult,
         program_error::ProgramError,
         pubkey::Pubkey,
-        system_program,
     },
 };
 
 #[derive(WrappedPod)]
 pub struct Params<'a> {
     signer_nonce: &'a u64,
-    schedule: &'a [VestingSchedule]
+    schedule: &'a [VestingSchedule],
 }
 
 #[derive(InstructionsAccount)]
@@ -83,72 +88,88 @@ impl<'a, 'b: 'a> Accounts<'a, AccountInfo<'b>> {
 pub fn process(program_id: &Pubkey, accounts: &[AccountInfo], params: Params) -> ProgramResult {
     let accounts = Accounts::parse(accounts, program_id)?;
 
-    let Params { signer_nonce, schedule } = params;
+    let Params {
+        signer_nonce,
+        schedule,
+    } = params;
 
-    let expected_vesting_contract_account_size = VestingContract::compute_allocation_size(schedule.len());
+    // We only want a one-byte signer nonce
+    let signer_nonce = *signer_nonce as u8;
+
+    let expected_vesting_contract_account_size =
+        VestingContract::compute_allocation_size(schedule.len());
 
     if accounts.vesting_contract.data_len() != expected_vesting_contract_account_size {
         msg!("The vesting contract account is incorrectly sized for the supplied schedule!");
-        return Err(ProgramError::InvalidArgument)
+        return Err(ProgramError::InvalidArgument);
     }
+
+    check_vault_account(
+        accounts.vault,
+        program_id,
+        *accounts.vesting_contract.key,
+        signer_nonce,
+    )?;
 
     let mut vesting_contract_guard = accounts.vesting_contract.data.borrow_mut();
 
     VestingContract::initialize(&mut vesting_contract_guard)?;
-    let vesting_contract = VestingContract::from_buffer(&mut vesting_contract_guard, state::Tag::VestingContract)?;
+    let vesting_contract =
+        VestingContract::from_buffer(&mut vesting_contract_guard, state::Tag::VestingContract)?;
 
-    *vesting_contract.header = VestingContractHeader { 
-        owner: *accounts.recipient.key, 
+    *vesting_contract.header = VestingContractHeader {
+        owner: *accounts.recipient.key,
         vault: *accounts.vault.key,
         current_schedule_index: 0,
-        signer_nonce: *signer_nonce as u8,
-        _padding: [0;7] 
+        signer_nonce,
+        _padding: [0; 7],
     };
-    
+
     let mut total_amount = 0u64;
     for (schedule, slot) in schedule.iter().zip(vesting_contract.schedules.iter_mut()) {
         *slot = *schedule;
         total_amount = total_amount.checked_add(schedule.quantity).unwrap();
     }
 
-
     let instruction = spl_token::instruction::transfer(
-        &spl_token::ID, 
-        accounts.source_tokens.key, 
-        accounts.vault.key, 
-        accounts.source_tokens_owner.key, 
-        &[], 
-        total_amount
+        &spl_token::ID,
+        accounts.source_tokens.key,
+        accounts.vault.key,
+        accounts.source_tokens_owner.key,
+        &[],
+        total_amount,
     )?;
 
-    invoke(&instruction, &[
-        accounts.spl_token_program.clone(),
-        accounts.source_tokens.clone(),
-        accounts.vault.clone(),
-        accounts.source_tokens_owner.clone()
-    ])?;
+    invoke(
+        &instruction,
+        &[
+            accounts.spl_token_program.clone(),
+            accounts.source_tokens.clone(),
+            accounts.vault.clone(),
+            accounts.source_tokens_owner.clone(),
+        ],
+    )?;
 
-    // let vault_signer = Pubkey::create_program_address(&[&accounts.vesting_contract.key.to_bytes(), &[*signer_nonce as u8]], program_id)?;
+    Ok(())
+}
 
+fn check_vault_account(
+    vault: &AccountInfo,
+    program_id: &Pubkey,
+    contract_key: Pubkey,
+    signer_nonce: u8,
+) -> Result<(), ProgramError> {
+    let vault_account = spl_token::state::Account::unpack(&vault.data.borrow())?;
 
-    // Verify the example state account
-    // let (example_state_key, _) = VestingContract::find_key(program_id);
-    // check_account_key(accounts.example_state_cast, &example_state_key)?;
-
-    // let mut example_state_cast_guard = accounts.example_state_cast.data.borrow_mut();
-
-    // let example_state_cast =
-    //     VestingContract::from_buffer(&mut example_state_cast_guard, Tag::VestingContract)?;
-
-    // let mut example_state_borsh_guard = accounts.example_state_borsh.data.borrow_mut();
-
-    // let example_state_borsh =
-    //     ExampleStateBorsh::from_buffer(&mut example_state_borsh_guard, Tag::ExampleStateBorsh)?;
-
-    //...
-
-    // Update example state account
-    // example_state_borsh.save(&mut example_state_borsh_guard);
-
+    let vault_signer =
+        Pubkey::create_program_address(&[&contract_key.to_bytes(), &[signer_nonce]], program_id)?;
+    let is_valid = vault_account.owner == vault_signer
+        && vault_account.amount == 0
+        && vault_account.delegate.is_none()
+        && vault_account.state == AccountState::Initialized
+        && vault_account.close_authority.is_none();
+    if !is_valid {
+        return Err(TokenVestingError::InvalidVaultAccount.into());
+    }
     Ok(())
 }

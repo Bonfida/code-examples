@@ -14,6 +14,8 @@ pub enum TokenVestingError {
     WrongOwner,
     #[error("Account is uninitialized")]
     Uninitialized,
+    #[error("The provided vault account is invalid")]
+    InvalidVaultAccount,
 }
 
 impl From<TokenVestingError> for ProgramError {

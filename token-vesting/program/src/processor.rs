@@ -1,5 +1,4 @@
 use {
-    borsh::BorshDeserialize,
     num_traits::FromPrimitive,
     solana_program::{
         account_info::AccountInfo, entrypoint::ProgramResult, msg, program_error::ProgramError,

@@ -10,6 +10,7 @@ use bonfida_utils::WrappedPod;
 
 use crate::instruction::ProgramInstruction;
 
+pub mod claim;
 pub mod create;
 
 pub struct Processor {}
@@ -28,9 +29,14 @@ impl Processor {
 
         match instruction {
             ProgramInstruction::Create => {
-                msg!("Instruction: Create"); //TODO
+                msg!("Instruction: Create");
                 let params = create::Params::from_bytes(instruction_data);
                 create::process(program_id, accounts, params)?;
+            }
+            ProgramInstruction::Claim => {
+                msg!("Instruction: Claim");
+                let params = bytemuck::from_bytes(instruction_data);
+                claim::process(program_id, accounts, params)?;
             }
         }
 

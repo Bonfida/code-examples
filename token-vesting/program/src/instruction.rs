@@ -1,3 +1,4 @@
+pub use crate::processor::claim;
 pub use crate::processor::create;
 use {
     bonfida_utils::InstructionsAccount,
@@ -16,8 +17,13 @@ pub enum ProgramInstruction {
     /// | 1     | ❌        | ❌      | The SPL token program account |
     /// | 2     | ✅        | ✅      | Fee payer account             |
     Create,
+    Claim,
 }
 #[allow(missing_docs)]
 pub fn create(accounts: create::Accounts<Pubkey>, params: create::Params) -> Instruction {
     accounts.get_instruction_wrapped_pod(crate::ID, ProgramInstruction::Create as u8, params)
+}
+#[allow(missing_docs)]
+pub fn claim(accounts: claim::Accounts<Pubkey>, params: claim::Params) -> Instruction {
+    accounts.get_instruction_cast(crate::ID, ProgramInstruction::Claim as u8, params)
 }

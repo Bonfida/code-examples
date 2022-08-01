@@ -18,7 +18,7 @@ num-traits = "0.2"
 num-derive = "0.3"
 enumflags2 = "0.7.5"
 spl-token = {version="3.3.0", features= ["no-entrypoint"]}
-bonfida-utils = {path = "../../../bonfida-utils/utils", features = ["instruction_params_wrapped"]}
+bonfida-utils = "0.2.12"
 spl-associated-token-account = {version = "1.0.5", features = ["no-entrypoint"]}
 bytemuck = "1.10.0"
 

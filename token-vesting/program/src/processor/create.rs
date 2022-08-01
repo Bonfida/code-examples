@@ -126,7 +126,13 @@ pub fn process(program_id: &Pubkey, accounts: &[AccountInfo], params: Params) ->
     };
 
     let mut total_amount = 0u64;
+    let mut last_timestamp: u64 = 0;
     for (schedule, slot) in schedule.iter().zip(vesting_contract.schedules.iter_mut()) {
+        if schedule.unlock_timestamp < last_timestamp {
+            msg!("The schedules should be provided in order!");
+            return Err(ProgramError::InvalidArgument);
+        }
+        last_timestamp = schedule.unlock_timestamp;
         *slot = *schedule;
         total_amount = total_amount.checked_add(schedule.quantity).unwrap();
     }

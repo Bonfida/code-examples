@@ -27,8 +27,8 @@ use {
 
 #[derive(WrappedPod)]
 pub struct Params<'a> {
-    signer_nonce: &'a u64,
-    schedule: &'a [VestingSchedule],
+    pub signer_nonce: &'a u64,
+    pub schedule: &'a [VestingSchedule],
 }
 
 #[derive(InstructionsAccount)]

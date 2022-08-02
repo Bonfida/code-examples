@@ -324,6 +324,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "bonfida-test-utils"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5f5e173cb29de6ae76135771de382552e0cb73e7b07c0c314fe62c0caffc2779"
+dependencies = [
+ "async-trait",
+ "solana-program",
+ "solana-program-test",
+ "solana-sdk",
+ "spl-associated-token-account",
+ "spl-token",
+]
+
+[[package]]
 name = "bonfida-utils"
 version = "0.2.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4248,6 +4262,7 @@ name = "token-vesting"
 version = "0.1.0"
 dependencies = [
  "arrayref",
+ "bonfida-test-utils",
  "bonfida-utils",
  "borsh",
  "bytemuck",

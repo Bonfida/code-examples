@@ -36,3 +36,11 @@ bonfida-test-utils = "0.2.0"
 
 [lib]
 crate-type = ["cdylib", "lib"]
+
+[workspace.metadata.dylint]
+libraries = [
+    { path = "../../../bonfida-lints" }
+]
+
+[package.metadata.rust-analyzer]
+rustc_private = true

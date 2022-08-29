@@ -94,7 +94,7 @@ pub fn process(program_id: &Pubkey, accounts: &[AccountInfo], params: Params) ->
     } = params;
 
     // We only want a one-byte signer nonce
-    let signer_nonce = *signer_nonce as u8;
+    let mut signer_nonce = *signer_nonce as u8;
 
     let expected_vesting_contract_account_size =
         VestingContract::compute_allocation_size(schedule.len());

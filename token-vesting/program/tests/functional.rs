@@ -13,7 +13,7 @@ use {
 pub mod common;
 
 #[tokio::test]
-async fn test_offer() {
+async fn test_01() {
     // Create program and test environment
     const ALICE: usize = 0;
     const BOB: usize = 1;
@@ -30,7 +30,6 @@ async fn test_offer() {
     );
 
     let (mint_key, _) = program_test.add_mint(None, 6, &keypairs[MINT_AUTHORITY].pubkey());
-    program_test.add_account_with_lamports(keypairs[ALICE].pubkey(), 100_000_000_000);
 
     ////
     // Create test context
@@ -41,7 +40,10 @@ async fn test_offer() {
     let ata_keys = prg_test_ctx
         .initialize_token_accounts(
             mint_key,
-            &keypairs.iter().map(|k| k.pubkey()).collect::<Vec<_>>(),
+            &keypairs[0..2]
+                .iter()
+                .map(|k| k.pubkey())
+                .collect::<Vec<_>>(),
         )
         .await
         .unwrap();

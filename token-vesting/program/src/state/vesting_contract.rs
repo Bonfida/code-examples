@@ -69,6 +69,10 @@ impl<'contract> VestingContract<'contract> {
 
     /// Compute a valid allocation size for a VestingContract
     pub fn compute_allocation_size(number_of_schedules: usize) -> usize {
-        8 + VestingContractHeader::LEN + number_of_schedules * VestingSchedule::LEN
+        number_of_schedules
+            .checked_mul(VestingSchedule::LEN)
+            .and_then(|n| n.checked_add(VestingContractHeader::LEN))
+            .and_then(|n| n.checked_add(8))
+            .unwrap()
     }
 }

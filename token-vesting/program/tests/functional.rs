@@ -106,8 +106,8 @@ async fn test_01() {
             recipient: &keypairs[BOB].pubkey(),
         },
         token_vesting::instruction::create::Params {
-            signer_nonce: &(vault_signer_nonce as u64),
-            schedule: &schedule,
+            signer_nonce: vault_signer_nonce,
+            schedule: schedule.clone(),
         },
     );
 

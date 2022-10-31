@@ -16,6 +16,8 @@ pub enum TokenVestingError {
     Uninitialized,
     #[error("The provided vault account is invalid")]
     InvalidVaultAccount,
+    #[error("Borsh Error")]
+    BorshError,
 }
 
 impl From<TokenVestingError> for ProgramError {

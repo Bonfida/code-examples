@@ -21,9 +21,9 @@ pub enum ProgramInstruction {
 }
 #[allow(missing_docs)]
 pub fn create(accounts: create::Accounts<Pubkey>, params: create::Params) -> Instruction {
-    accounts.get_instruction_wrapped_pod(crate::ID, ProgramInstruction::Create as u8, params)
+    accounts.get_instruction(crate::ID, ProgramInstruction::Create as u8, params)
 }
 #[allow(missing_docs)]
 pub fn claim(accounts: claim::Accounts<Pubkey>, params: claim::Params) -> Instruction {
-    accounts.get_instruction_cast(crate::ID, ProgramInstruction::Claim as u8, params)
+    accounts.get_instruction(crate::ID, ProgramInstruction::Claim as u8, params)
 }

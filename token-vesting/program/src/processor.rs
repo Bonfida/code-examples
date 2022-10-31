@@ -6,7 +6,7 @@ use {
     },
 };
 
-use bonfida_utils::WrappedPod;
+use borsh::BorshDeserialize;
 
 use crate::instruction::ProgramInstruction;
 
@@ -24,13 +24,13 @@ impl Processor {
         msg!("Beginning processing");
         let instruction = FromPrimitive::from_u8(instruction_data[0])
             .ok_or(ProgramError::InvalidInstructionData)?;
-        let instruction_data = &instruction_data[8..];
+        let instruction_data = &instruction_data[1..];
         msg!("Instruction unpacked");
 
         match instruction {
             ProgramInstruction::Create => {
                 msg!("Instruction: Create");
-                let params = create::Params::from_bytes(instruction_data);
+                let params = create::Params::deserialize(&mut (instruction_data as &[u8]))?;
                 create::process(program_id, accounts, params)?;
             }
             ProgramInstruction::Claim => {

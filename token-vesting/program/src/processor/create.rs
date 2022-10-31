@@ -1,15 +1,13 @@
 //! Create a new token vesting contract
 
-use bonfida_utils::{checks::check_account_owner, WrappedPod};
+use bonfida_utils::{checks::check_account_owner, BorshSize};
+use borsh::{BorshDeserialize, BorshSerialize};
 use solana_program::{msg, program::invoke, program_pack::Pack};
 use spl_token::state::AccountState;
 
 use crate::{
     error::TokenVestingError,
-    state::{
-        self,
-        vesting_contract::{VestingContract, VestingContractHeader, VestingSchedule},
-    },
+    state::vesting_contract::{VestingContract, VestingSchedule},
 };
 
 use {
@@ -25,10 +23,10 @@ use {
     },
 };
 
-#[derive(WrappedPod)]
-pub struct Params<'a> {
-    pub signer_nonce: &'a u64,
-    pub schedule: &'a [VestingSchedule],
+#[derive(BorshSerialize, BorshDeserialize, BorshSize)]
+pub struct Params {
+    pub signer_nonce: u8,
+    pub schedule: Vec<VestingSchedule>,
 }
 
 #[derive(InstructionsAccount)]
@@ -93,9 +91,6 @@ pub fn process(program_id: &Pubkey, accounts: &[AccountInfo], params: Params) ->
         schedule,
     } = params;
 
-    // We only want a one-byte signer nonce
-    let mut signer_nonce = *signer_nonce as u8;
-
     let expected_vesting_contract_account_size =
         VestingContract::compute_allocation_size(schedule.len());
 
@@ -114,26 +109,22 @@ pub fn process(program_id: &Pubkey, accounts: &[AccountInfo], params: Params) ->
     let mut vesting_contract_guard = accounts.vesting_contract.data.borrow_mut();
 
     VestingContract::initialize(&mut vesting_contract_guard)?;
-    let vesting_contract =
-        VestingContract::from_buffer(&mut vesting_contract_guard, state::Tag::VestingContract)?;
-
-    *vesting_contract.header = VestingContractHeader {
+    let vesting_contract = VestingContract {
         owner: *accounts.recipient.key,
         vault: *accounts.vault.key,
         current_schedule_index: 0,
         signer_nonce,
-        _padding: [0; 7],
+        schedule,
     };
 
     let mut total_amount = 0u64;
     let mut last_timestamp: u64 = 0;
-    for (schedule, slot) in schedule.iter().zip(vesting_contract.schedules.iter_mut()) {
+    for schedule in vesting_contract.schedule.iter() {
         if schedule.unlock_timestamp < last_timestamp {
             msg!("The schedules should be provided in order!");
             return Err(ProgramError::InvalidArgument);
         }
         last_timestamp = schedule.unlock_timestamp;
-        *slot = *schedule;
         total_amount = total_amount.checked_add(schedule.quantity).unwrap();
     }
 
@@ -155,6 +146,8 @@ pub fn process(program_id: &Pubkey, accounts: &[AccountInfo], params: Params) ->
             accounts.source_tokens_owner.clone(),
         ],
     )?;
+
+    vesting_contract.commit(&mut vesting_contract_guard)?;
 
     Ok(())
 }

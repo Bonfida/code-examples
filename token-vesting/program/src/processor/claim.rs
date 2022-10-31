@@ -1,6 +1,10 @@
 //! Claim unvested tokens
 
-use bonfida_utils::checks::{check_account_key, check_account_owner, check_signer};
+use bonfida_utils::{
+    checks::{check_account_key, check_account_owner, check_signer},
+    BorshSize,
+};
+use borsh::{BorshDeserialize, BorshSerialize};
 use bytemuck::{Pod, Zeroable};
 use solana_program::{clock::Clock, msg, program::invoke_signed, sysvar::Sysvar};
 
@@ -16,7 +20,7 @@ use {
     },
 };
 
-#[derive(Clone, Copy, Zeroable, Pod)]
+#[derive(Clone, Copy, Zeroable, Pod, BorshDeserialize, BorshSerialize, BorshSize)]
 #[repr(C)]
 pub struct Params {}
 
@@ -80,11 +84,11 @@ pub fn process(program_id: &Pubkey, accounts: &[AccountInfo], _params: &Params) 
 
     // We begin by parsing the vesting contract account
     let mut vesting_contract_guard = accounts.vesting_contract.data.borrow_mut();
-    let vesting_contract =
-        VestingContract::from_buffer(&mut vesting_contract_guard, state::Tag::VestingContract)?;
+    let mut vesting_contract =
+        VestingContract::from_buffer(&vesting_contract_guard, state::Tag::VestingContract)?;
 
     // We check that the specified owner actually owns this contract
-    if &vesting_contract.header.owner != accounts.owner.key {
+    if &vesting_contract.owner != accounts.owner.key {
         msg!("Invalid vesting contract owner!");
         return Err(ProgramError::InvalidArgument);
     }
@@ -93,7 +97,7 @@ pub fn process(program_id: &Pubkey, accounts: &[AccountInfo], _params: &Params) 
     // Since our vesting contract signer is tied to just one vesting contract
     // This isn't strictly necessary and the call to spl_token would fail.
     // This is defense in depth. Also it makes for nicer error messages.
-    if &vesting_contract.header.vault != accounts.vault.key {
+    if &vesting_contract.vault != accounts.vault.key {
         msg!("Invalid vault provided!");
         return Err(ProgramError::InvalidArgument);
     }
@@ -104,7 +108,7 @@ pub fn process(program_id: &Pubkey, accounts: &[AccountInfo], _params: &Params) 
     let contract_signer_key = Pubkey::create_program_address(
         &[
             &accounts.vesting_contract.key.to_bytes(),
-            &[vesting_contract.header.signer_nonce as u8],
+            &[vesting_contract.signer_nonce as u8],
         ],
         program_id,
     )?;
@@ -119,19 +123,19 @@ pub fn process(program_id: &Pubkey, accounts: &[AccountInfo], _params: &Params) 
 
     let mut total_amount_to_transfer: u64 = 0;
 
-    // We saturate the vesting_contract.header.current_schedule_index variable in case we don't break
+    // We saturate the vesting_contract.current_schedule_index variable in case we don't break
     // out of our loop. Not doing this would leave the contract empty but in a weird state
-    let current_schedule_index = vesting_contract.header.current_schedule_index as usize;
-    vesting_contract.header.current_schedule_index = u64::MAX;
+    let current_schedule_index = vesting_contract.current_schedule_index as usize;
+    vesting_contract.current_schedule_index = u64::MAX;
 
-    for (idx, s) in vesting_contract.schedules[current_schedule_index..]
+    for (idx, s) in vesting_contract.schedule[current_schedule_index..]
         .iter_mut()
         .enumerate()
     {
         if s.unlock_timestamp > current_timestamp {
             // We update the current_schedule_index for the next call to claim
             // This prevents the same quantity from being unlocked twice
-            vesting_contract.header.current_schedule_index = idx as u64;
+            vesting_contract.current_schedule_index = idx as u64;
             break;
         }
 
@@ -160,9 +164,11 @@ pub fn process(program_id: &Pubkey, accounts: &[AccountInfo], _params: &Params) 
         ],
         &[&[
             &accounts.vesting_contract.key.to_bytes(),
-            &[vesting_contract.header.signer_nonce as u8],
+            &[vesting_contract.signer_nonce as u8],
         ]],
     )?;
+
+    vesting_contract.commit(&mut vesting_contract_guard)?;
 
     Ok(())
 }

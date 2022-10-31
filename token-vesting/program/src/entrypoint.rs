@@ -43,6 +43,9 @@ impl PrintProgramError for TokenVestingError {
             TokenVestingError::InvalidVaultAccount => {
                 msg!("Error: The provided vault account is invalid")
             }
+            TokenVestingError::BorshError => {
+                msg!("Error: Borsh error")
+            }
         }
     }
 }

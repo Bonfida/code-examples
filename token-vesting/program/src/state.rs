@@ -5,7 +5,7 @@ use {
 
 pub mod vesting_contract;
 
-#[derive(BorshSerialize, BorshDeserialize, BorshSize, PartialEq)]
+#[derive(BorshSerialize, BorshDeserialize, BorshSize)]
 #[allow(missing_docs)]
 pub enum Tag {
     Uninitialized,

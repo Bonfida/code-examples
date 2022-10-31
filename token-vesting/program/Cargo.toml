@@ -8,6 +8,7 @@ edition = "2018"
 [features]
 no-entrypoint = []
 test-bpf = []
+benchmarking = ["bonfida-utils/benchmarking"]
 
 [dependencies]
 solana-program = "1.11.1"
@@ -44,3 +45,7 @@ libraries = [
 
 [package.metadata.rust-analyzer]
 rustc_private = true
+
+[[bench]]
+name = "schedules_len"
+harness = false

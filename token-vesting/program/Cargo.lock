@@ -346,7 +346,11 @@ dependencies = [
  "bonfida-macros",
  "borsh",
  "bytemuck",
+ "lazy_static",
  "pyth-sdk-solana",
+ "regex",
+ "serde",
+ "serde_json",
  "solana-program",
  "spl-token",
 ]
